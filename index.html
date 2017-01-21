@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Websocket Log Viewer</title>
+	<meta charset="UTF-8">
+	<link href='http://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+	<script src="https://code.jquery.com/jquery-3.1.1.slim.min.js"></script>
+	<style type="text/css">
+	body {
+		font-family: 'Ubuntu Mono', monospace;
+		font-size: 12px
+	}
+
+	#log_container div.file {
+		border: 1px solid #CCC;
+		padding: 1em;
+		margin: 1em;
+	}
+
+	#log_container div.file div.line {
+		font-size: 10px
+	}
+
+
+	/* Clearfix */
+	.cf:before,
+	.cf:after {
+		content: " "; /* 1 */
+		display: table; /* 2 */
+	}
+	.cf:after {
+		clear: both;
+	}
+	.cf {
+		*zoom: 1;
+	}
+	</style>
+
+	<script type="text/javascript">
+	var socket, lastfile;
+	var filekeys = {};
+
+	function socketize(wsUri) {
+		socket = new WebSocket('ws://' + wsUri);
+		socket.onopen = function(evt) { onEvent(evt) };
+		socket.onclose = function(evt) { onEvent(evt) };
+		socket.onmessage = function(evt) { onMessage(evt) };
+		socket.onerror = function(evt) { onEvent(evt) };
+		console.log(wsUri);
+	}
+
+	function onEvent(evt) {
+		switch (evt.type) {
+			case 'open':
+			$("#wsconnect").text('Connected');
+			$("#wsaddr").prop("disabled", "true");
+			$("#log_container").html('');
+			break;
+
+			default:
+			$("#wsconnect").text('Disconnected');
+			$("#wsaddr").prop("disabled", "false");
+			break;
+		}
+	}
+
+	function onMessage(evt) {
+		var lines = evt.data.replace(/^\s+|\s+$/g, '').split("\n");
+		var re = lines[0].match(/(==>\s+)(.*)(\s+<==)/);
+		var container = $("#log_container");
+
+		if (re) {			
+			lastfile = re[2];
+			lines.shift();
+		} else if (!Object.keys(filekeys).length) {
+			// This occurs on new socket connections. 
+			// We don't know (yet) what file does it belong, therefore we'll discard it.
+			console.log('Ignored: ' + evt.data);
+			return;
+		}
+
+		// On HTML5, only space not allowed in ID's but I still don't want use fancy characters in elements' ID.
+		// https://www.w3.org/TR/html5/dom.html#the-id-attribute
+		var elemid = 'h_' + lastfile.replace(/[^a-z0-9]/gi,'');
+
+		if (!filekeys[lastfile]) {
+			filekeys[lastfile] = elemid;
+		}
+
+		if ($("#" + elemid, container).length) {
+			var elem = $("#" + elemid + ' div.lines', container);
+		} else {
+			var elem = $('<div/>', {id: elemid}).addClass("file").append($('<h3/>').text(lastfile)).append($('<div/>').addClass('lines')).appendTo(container).find('div.lines');
+		}
+		
+		// Currently we receive only one line of log each call, but assumptions is bad.
+		for (i = 0; i < lines.length; ++i) {
+    		$('<div/>').addClass('line').text(lines[i]).prependTo(elem);
+		}
+
+		// Show last 25 records
+		var elemcount = $("div.line", elem).length;
+		if (elemcount > 25) {
+			$("div.line", elem).slice(25-elemcount).remove();
+		}
+
+		// Move to top
+		$('#' + elemid).prependTo(container);
+
+	
+		//console.log(evt.data);
+	}
+
+	$(function() {
+		$("#wsconnect").click(function() {
+			socketize($("#wsaddr").val());
+		}).click();
+	});
+	</script>
+</head>
+<body>
+	<div id="wssrc_container">
+		<p><strong>Websocket Log Viewer</strong> Enter your websocket address.</p>
+		ws://<input type="text" id="wsaddr" value="example.com:7891" /> <button id="wsconnect">Connect</button>
+	</div>
+	<hr>
+	<div id="log_container">
+		Your logs will show here.
+	</div>
+</body>
+</html>
