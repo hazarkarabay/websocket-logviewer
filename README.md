@@ -33,3 +33,5 @@ It will show last 25 lines (maximum) for each log.
  - If you use a wildcard like in my helper example, newly added log files does not show up your viewer. Filename expansion will occur only when you executing that command. This is expected (and obvious maybe), just reminding.
 
 Feel free to enhance or use it for your forking pleasure.
+  
+[![ghit.me](https://ghit.me/badge.svg?repo=hazarkarabay/websocket-logviewer)](https://ghit.me/repo/hazarkarabay/websocket-logviewer)
